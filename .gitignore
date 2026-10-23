@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+build/
+dist/
+*.log
+*.exe
+*.crx
+
+# Android & Gradle
+.gradle/
+build/
+android/build/
+android/app/build/
+*.apk
+*.ap_
+*.aab
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# Temporary files
+temp_*.html
+*.tmp

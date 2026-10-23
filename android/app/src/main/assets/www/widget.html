@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+html, body {
+  width: 72px; height: 72px;
+  background: transparent;
+  overflow: hidden;
+  display: flex; justify-content: center; align-items: center;
+}
+.widget {
+  width: 66px; height: 66px;
+  border-radius: 50%;
+  position: relative;
+  cursor: grab;
+  display: grid;
+  place-items: center;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-app-region: drag;
+}
+.widget:active {
+  cursor: grabbing;
+  transform: scale(0.96);
+}
+
+/* Disconnected State (Pure Obsidian Black) */
+.widget.disconnected {
+  background: #101117;
+  border: 2px solid #2a2d3d;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.widget.disconnected svg {
+  stroke: #94a3b8;
+  fill: #94a3b8;
+}
+
+/* Connecting State (Glowing Amber) */
+.widget.connecting {
+  background: #241c0e;
+  border: 2px solid #f59e0b;
+  box-shadow: 0 0 16px rgba(245,158,11,0.35);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.widget.connecting svg {
+  stroke: #f59e0b;
+  fill: #f59e0b;
+}
+
+/* Connected State (سبز کله‌غازی Teal & Neon Cyan Ring) */
+.widget.connected {
+  background: #008b8b; /* سبز کله‌غازی */
+  border: 2px solid #00f5c4; /* نئون فیروزه‌ای */
+  box-shadow: 0 0 20px rgba(0,245,196,0.4), 0 4px 14px rgba(0,139,139,0.3);
+}
+.widget.connected svg {
+  stroke: #ffffff;
+  fill: #ffffff;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+svg {
+  width: 28px; height: 28px;
+  transition: all 0.3s;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+<div class="widget disconnected" id="wBtn">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+</div>
+
+<script>
+var btn = document.getElementById('wBtn');
+var clickTimer = null;
+
+function setState(state) {
+  btn.className = 'widget ' + state;
+}
+
+btn.addEventListener('click', function(e) {
+  if (clickTimer == null) {
+    clickTimer = setTimeout(function() {
+      clickTimer = null;
+      if (window.pywebview && window.pywebview.api && window.pywebview.api.widget_click) {
+        window.pywebview.api.widget_click();
+      }
+    }, 250);
+  } else {
+    clearTimeout(clickTimer);
+    clickTimer = null;
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.widget_dblclick) {
+      window.pywebview.api.widget_dblclick();
+    }
+  }
+});
+</script>
+</body>
+</html>

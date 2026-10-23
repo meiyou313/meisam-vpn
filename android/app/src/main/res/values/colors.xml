@@ -1,0 +1,11 @@
+<resources>
+    <color name="primary">#6a5cea</color>
+    <color name="primary_dark">#0a0a18</color>
+    <color name="accent">#8578f2</color>
+    <color name="bg_dark">#0a0a18</color>
+    <color name="teal_connected">#008b8b</color>
+    <color name="neon_cyan">#00f5c4</color>
+    <color name="obsidian_disconnected">#101117</color>
+    <color name="border_disconnected">#2a2d3d</color>
+    <color name="amber_connecting">#f59e0b</color>
+</resources>
