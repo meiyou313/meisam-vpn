@@ -40,12 +40,12 @@ jobs:
       - name: Prepare APK Output
         run: |
           mkdir -p output_apk
-          find android -name "*.apk" -exec cp -v {} output_apk/Meisam_VPN_v3.5.apk \;
+          find android -name "*.apk" -exec cp -v {} output_apk/Meisam_VPN_beta0.3.6.apk \;
           ls -la output_apk/
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Meisam_VPN_Android_v3.5
-          path: output_apk/Meisam_VPN_v3.5.apk
+          name: Meisam_VPN_Android_beta0.3.6
+          path: output_apk/Meisam_VPN_beta0.3.6.apk
           retention-days: 30

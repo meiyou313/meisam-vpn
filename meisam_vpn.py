@@ -23,7 +23,7 @@ import urllib.request
 import webview
 
 APP_NAME = "Meisam VPN"
-APP_VERSION = "Version 3.5 (2026)"
+APP_VERSION = "beta0.3.6"
 LOCAL_PORT = 10809
 DOMAINS = [
     "https://antpeak.com",
@@ -34,13 +34,13 @@ DOMAINS = [
 ]
 
 DEFAULT_SERVER_ENDPOINTS = {
-    "gb-lnd": {"host": "erith-5-uk.nexorcdn.com", "port": 19666, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
-    "nl": {"host": "maasdam-3-nl.nexorcdn.com", "port": 16644, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
-    "fr-prs": {"host": "pinot-fr.nexorcdn.com", "port": 44976, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
-    "us-va": {"host": "trout-east-5-us.nexorcdn.com", "port": 13376, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
-    "us-or": {"host": "trout-west-5-us.nexorcdn.com", "port": 25310, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
-    "sg": {"host": "singha-sg.nexorcdn.com", "port": 53179, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
-    "ru-spb": {"host": "chalo-ru.nexorcdn.com", "port": 51320, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"}
+    "gb-lnd": {"host": "erith-6-uk.nexorcdn.com", "port": 18730, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
+    "nl": {"host": "maasdam-6-nl.nexorcdn.com", "port": 42580, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
+    "fr-prs": {"host": "camembert-6-fr.nexorcdn.com", "port": 42160, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
+    "us-va": {"host": "trout-east-6-us.nexorcdn.com", "port": 29292, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
+    "us-or": {"host": "trout-west-3-us.nexorcdn.com", "port": 18532, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
+    "sg": {"host": "singha-sg.nexorcdn.com", "port": 32592, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"},
+    "ru-spb": {"host": "chalo-ru.nexorcdn.com", "port": 12318, "username": "371f6ca0caeca591ec4af62ca9849da6", "password": "HTIEUUN8SMKODaKK"}
 }
 
 # Only the 7 genuine working VeePN free locations
@@ -134,6 +134,7 @@ class VeePNApi:
         self.active_domain = DOMAINS[0]
         self.servers_cache = dict(DEFAULT_SERVER_ENDPOINTS)
         self.load_config()
+        threading.Thread(target=self.refresh_all_endpoints, daemon=True).start()
 
     def load_config(self):
         if os.path.exists(self.config_file):
@@ -143,6 +144,9 @@ class VeePNApi:
                     self.udid = data.get("udid")
                     self.token = data.get("token")
                     self.token_expiry = data.get("expiry", 0)
+                    cached_srvs = data.get("servers_cache")
+                    if isinstance(cached_srvs, dict) and len(cached_srvs) > 0:
+                        self.servers_cache.update(cached_srvs)
             except Exception:
                 pass
         if not self.udid:
@@ -161,10 +165,24 @@ class VeePNApi:
             existing.update({
                 "udid": self.udid,
                 "token": self.token,
-                "expiry": self.token_expiry
+                "expiry": self.token_expiry,
+                "servers_cache": self.servers_cache
             })
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(existing, f, indent=2)
+        except Exception:
+            pass
+
+    def refresh_all_endpoints(self):
+        try:
+            time.sleep(1.0)
+            free_codes = ["nl", "gb-lnd", "fr-prs", "us-va", "us-or", "sg", "ru-spb"]
+            for code in free_codes:
+                try:
+                    self.get_servers_for_region(code, force=True)
+                except Exception:
+                    pass
+            self.save_config()
         except Exception:
             pass
 
@@ -395,7 +413,7 @@ class LocalTunnelServer:
 # =========================================================================
 # 4. Latency / Deep Ping Handshake (Preserved)
 # =========================================================================
-def test_single_server(host, port, username, password, target_url="https://web.telegram.org/", timeout=2.0):
+def test_single_server(host, port, username, password, target_url="https://web.telegram.org/", timeout=4.5):
     try:
         start = time.perf_counter()
         ctx = ssl.create_default_context()
@@ -434,10 +452,11 @@ def test_single_server(host, port, username, password, target_url="https://web.t
         except Exception:
             pass
 
-        if b"200" in resp or (latency_ms > 0 and len(resp) > 0):
+        first_line = resp.decode("latin1", errors="ignore").split("\r\n")[0]
+        if "200" in first_line:
             return True, latency_ms, "OK"
         else:
-            return False, latency_ms, "Fail"
+            return False, 0, f"Proxy error: {first_line}"
     except Exception as e:
         return False, 0, str(e)
 
@@ -470,8 +489,7 @@ class MeisamVpnJsApi:
 
     def measure_ping(self, code):
         try:
-            fut = self.app.executor.submit(self.app.measure_ping, code)
-            return fut.result(timeout=2.5)
+            return self.app.measure_ping(code)
         except Exception:
             return {"ok": False, "ping": None}
 
@@ -611,7 +629,7 @@ class MeisamVpnApp:
                 u, p = s["username"], s["password"]
                 h = s["addresses"][0]
                 port = s["port"]
-                ok, latency, msg = test_single_server(h, port, u, p, target_url=DEEP_TEST_URL, timeout=1.8)
+                ok, latency, msg = test_single_server(h, port, u, p, target_url=DEEP_TEST_URL, timeout=4.5)
                 if ok:
                     return {"ok": True, "ping": latency}
             return {"ok": False, "ping": None}

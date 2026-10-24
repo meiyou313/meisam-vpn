@@ -34,13 +34,13 @@ public class VeePNApi {
     private static final Map<String, JSONObject> CACHED_ENDPOINTS = new ConcurrentHashMap<>();
     static {
         try {
-            CACHED_ENDPOINTS.put("gb-lnd", new JSONObject("{\"host\":\"erith-5-uk.nexorcdn.com\",\"port\":19666,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
-            CACHED_ENDPOINTS.put("nl", new JSONObject("{\"host\":\"maasdam-3-nl.nexorcdn.com\",\"port\":16644,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
-            CACHED_ENDPOINTS.put("fr-prs", new JSONObject("{\"host\":\"pinot-fr.nexorcdn.com\",\"port\":44976,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
-            CACHED_ENDPOINTS.put("us-va", new JSONObject("{\"host\":\"trout-east-5-us.nexorcdn.com\",\"port\":13376,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
-            CACHED_ENDPOINTS.put("us-or", new JSONObject("{\"host\":\"trout-west-5-us.nexorcdn.com\",\"port\":25310,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
-            CACHED_ENDPOINTS.put("sg", new JSONObject("{\"host\":\"singha-sg.nexorcdn.com\",\"port\":53179,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
-            CACHED_ENDPOINTS.put("ru-spb", new JSONObject("{\"host\":\"chalo-ru.nexorcdn.com\",\"port\":51320,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("gb-lnd", new JSONObject("{\"host\":\"erith-6-uk.nexorcdn.com\",\"port\":18730,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("nl", new JSONObject("{\"host\":\"maasdam-6-nl.nexorcdn.com\",\"port\":42580,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("fr-prs", new JSONObject("{\"host\":\"camembert-6-fr.nexorcdn.com\",\"port\":42160,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("us-va", new JSONObject("{\"host\":\"trout-east-6-us.nexorcdn.com\",\"port\":29292,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("us-or", new JSONObject("{\"host\":\"trout-west-3-us.nexorcdn.com\",\"port\":18532,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("sg", new JSONObject("{\"host\":\"singha-sg.nexorcdn.com\",\"port\":32592,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
+            CACHED_ENDPOINTS.put("ru-spb", new JSONObject("{\"host\":\"chalo-ru.nexorcdn.com\",\"port\":12318,\"username\":\"371f6ca0caeca591ec4af62ca9849da6\",\"password\":\"HTIEUUN8SMKODaKK\"}"));
         } catch (Exception ignored) {}
     }
 
@@ -60,6 +60,17 @@ public class VeePNApi {
         this.udid = prefs.getString("udid", null);
         this.token = prefs.getString("token", null);
         this.tokenExpiry = prefs.getLong("expiry", 0);
+        String savedEndpoints = prefs.getString("cached_endpoints_json", null);
+        if (savedEndpoints != null) {
+            try {
+                JSONObject all = new JSONObject(savedEndpoints);
+                java.util.Iterator<String> keys = all.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    CACHED_ENDPOINTS.put(k, all.getJSONObject(k));
+                }
+            } catch (Exception ignored) {}
+        }
         if (this.udid == null) {
             this.udid = UUID.randomUUID().toString();
             saveConfig();
@@ -162,6 +173,65 @@ public class VeePNApi {
         return fallback;
     }
 
+    public void refreshEndpointsAsync() {
+        new Thread(() -> {
+            try {
+                String token = getToken();
+                String[] regions = {"gb-lnd", "nl", "fr-prs", "us-va", "us-or", "sg", "ru-spb"};
+                JSONObject toSave = new JSONObject();
+                for (String r : regions) {
+                    try {
+                        URL url = new URL(activeDomain + "/api/server/list/");
+                        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                        conn.setRequestMethod("POST");
+                        conn.setConnectTimeout(4000);
+                        conn.setReadTimeout(4000);
+                        conn.setRequestProperty("Content-Type", "application/json");
+                        conn.setRequestProperty("Authorization", "Bearer " + token);
+                        conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+                        conn.setDoOutput(true);
+
+                        JSONObject payload = new JSONObject();
+                        payload.put("protocol", "https");
+                        payload.put("region", r);
+                        payload.put("type", 0);
+
+                        try (OutputStream os = conn.getOutputStream()) {
+                            os.write(payload.toString().getBytes("utf-8"));
+                        }
+
+                        if (conn.getResponseCode() == 200) {
+                            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                            StringBuilder sb = new StringBuilder();
+                            String line;
+                            while ((line = br.readLine()) != null) sb.append(line);
+                            br.close();
+
+                            JSONObject res = new JSONObject(sb.toString());
+                            if (res.optBoolean("success")) {
+                                JSONArray data = res.getJSONArray("data");
+                                if (data.length() > 0) {
+                                    JSONObject s0 = data.getJSONObject(0);
+                                    JSONObject cached = new JSONObject();
+                                    cached.put("host", s0.getJSONArray("addresses").getString(0));
+                                    cached.put("port", s0.getInt("port"));
+                                    cached.put("username", s0.getString("username"));
+                                    cached.put("password", s0.getString("password"));
+                                    CACHED_ENDPOINTS.put(r, cached);
+                                    toSave.put(r, cached);
+                                }
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+                if (toSave.length() > 0) {
+                    SharedPreferences prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+                    prefs.edit().putString("cached_endpoints_json", toSave.toString()).apply();
+                }
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
     public int testServerPing(String regionCode) {
         String code = regionCode != null ? regionCode.toLowerCase() : "gb-lnd";
         JSONObject s = CACHED_ENDPOINTS.get(code);
@@ -177,9 +247,9 @@ public class VeePNApi {
             long t0 = System.currentTimeMillis();
             SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
             try (Socket raw = new Socket()) {
-                raw.connect(new InetSocketAddress(host, port), 1800);
+                raw.connect(new InetSocketAddress(host, port), 4500);
                 try (SSLSocket ssl = (SSLSocket) factory.createSocket(raw, host, port, true)) {
-                    ssl.setSoTimeout(1800);
+                    ssl.setSoTimeout(4500);
                     ssl.startHandshake();
 
                     String auth = android.util.Base64.encodeToString((username + ":" + password).getBytes(), android.util.Base64.NO_WRAP);
@@ -195,7 +265,10 @@ public class VeePNApi {
                     int len = ssl.getInputStream().read(buf);
                     long latency = System.currentTimeMillis() - t0;
                     if (len > 0) {
-                        return (int) Math.max(20, latency);
+                        String resp = new String(buf, 0, len);
+                        if (resp.contains("200")) {
+                            return (int) Math.max(20, latency);
+                        }
                     }
                 }
             }

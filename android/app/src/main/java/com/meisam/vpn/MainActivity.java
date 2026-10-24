@@ -46,13 +46,13 @@ public class MainActivity extends AppCompatActivity {
                 String serverName = intent.getStringExtra("server_name");
                 long bytes = intent.getLongExtra("total_bytes", 0);
                 double mb = bytes / (1024.0 * 1024.0);
-                String formatted = mb < 0.1 ? "0 MB" : (mb >= 1000 ? String.format("%.2f GB", mb / 1000.0) : String.format("%.1f MB", mb));
+                String formatted = mb < 0.1 ? "0 MB" : (mb >= 1000 ? String.format(java.util.Locale.US, "%.2f GB", mb / 1000.0) : String.format(java.util.Locale.US, "%.1f MB", mb));
                 double pct = Math.min(100.0, (mb / 1000.0) * 100.0);
 
                 runOnUiThread(() -> {
                     if (webView != null) {
                         webView.evaluateJavascript("if(window.setVpnState) window.setVpnState('" + status + "', '" + serverName + "');", null);
-                        webView.evaluateJavascript("if(window.updateTraffic) window.updateTraffic(" + String.format("%.1f", mb) + ", '" + formatted + "', " + String.format("%.1f", pct) + ");", null);
+                        webView.evaluateJavascript("if(window.updateTraffic) window.updateTraffic(" + String.format(java.util.Locale.US, "%.1f", mb) + ", '" + formatted + "', " + String.format(java.util.Locale.US, "%.1f", pct) + ");", null);
                     }
                 });
             }
@@ -67,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
         threadPool = Executors.newCachedThreadPool();
         api = new VeePNApi(this);
+        api.refreshEndpointsAsync();
 
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         selectedRegionCode = prefs.getString("selected_region", "gb-lnd");
@@ -153,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
                 "  return new Promise(function(resolve) {\n" +
                 "    var callId = 'p_' + Math.random().toString(36).substr(2, 9);\n" +
                 "    pingCallbacks[callId] = function(p) {\n" +
-                "      resolve(p > 0 ? p : null);\n" +
+                "      resolve(p > 0 ? p : -1);\n" +
                 "    };\n" +
                 "    window.AndroidBridge.measurePingAsync(code, callId);\n" +
                 "  });\n" +
@@ -242,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
                 obj.put("server_name", selectedServerName);
                 obj.put("theme", prefs.getString("theme", "dark"));
                 obj.put("widget_enabled", prefs.getBoolean("widget_enabled", false));
-                obj.put("version", "Version 3.5 (2026)");
+                obj.put("version", "beta0.3.6");
                 obj.put("data_mb", 0.0);
                 obj.put("data_formatted", "0 MB");
                 obj.put("data_percent", 0.0);
