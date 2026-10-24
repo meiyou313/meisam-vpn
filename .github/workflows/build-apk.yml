@@ -35,19 +35,12 @@ jobs:
           gradle --version
           cd android
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee ../build_log.txt
-
-      - name: Upload Build Failure Log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-failure-log
-          path: build_log.txt
+          gradle assembleDebug --stacktrace --no-daemon
 
       - name: Prepare APK Output
         run: |
           mkdir -p output_apk
-          cp android/app/build/outputs/apk/debug/*.apk output_apk/Meisam_VPN_v3.5.apk
+          find android -name "*.apk" -exec cp -v {} output_apk/Meisam_VPN_v3.5.apk \;
           ls -la output_apk/
 
       - name: Upload APK Artifact
