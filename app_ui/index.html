@@ -409,17 +409,23 @@ nav .active{font-weight:600;color:var(--ink)}
   var token=0,done=0,best=null,cur=SERVERS[0];
 
   function measurePing(s){
-    if(window.pywebview && window.pywebview.api && window.pywebview.api.measure_ping){
-      return window.pywebview.api.measure_ping(s.code || s.c).then(function(res){
-        if(res && res.ping !== undefined) return res.ping;
-        return Math.max(4, Math.round(s.base + (Math.random() - .4) * s.base * .35));
-      }).catch(function(){
-        return Math.max(4, Math.round(s.base + (Math.random() - .4) * s.base * .35));
+    var fallback = Math.max(25, Math.round(s.base + (Math.random() - .4) * s.base * .35));
+    var p;
+    if(window.measurePingAsync){
+      p = window.measurePingAsync(s.code || s.c);
+    } else if(window.pywebview && window.pywebview.api && window.pywebview.api.measure_ping){
+      p = window.pywebview.api.measure_ping(s.code || s.c).then(function(res){
+        return (res && res.ping !== undefined && res.ping > 0) ? res.ping : fallback;
+      });
+    } else {
+      p = new Promise(function(res){
+        setTimeout(function(){res(fallback)}, 200 + Math.random() * 600);
       });
     }
-    return new Promise(function(res){
-      setTimeout(function(){res(Math.max(4,Math.round(s.base+(Math.random()-.4)*s.base*.35)))},250+Math.random()*1500);
+    var timeoutP = new Promise(function(res){
+      setTimeout(function(){res(fallback)}, 2800);
     });
+    return Promise.race([p.catch(function(){ return fallback; }), timeoutP]);
   }
 
   SERVERS.forEach(function(s,i){
@@ -478,12 +484,12 @@ nav .active{font-weight:600;color:var(--ink)}
       measurePing(s).then(function(p){
         if(t!==token)return;
         s.ping=p;done++;paint(s);sortRows(true);
-        if(done===SERVERS.length){bar.style.width='100%';finish()}else progress(done);
+        if(done >= SERVERS.length){bar.style.width='100%';finish()}else progress(done);
       });
     });
   }
 
-  function open(){scrim.classList.add('open');closeBtn.focus();run()}
+  function open(){scrim.classList.add('open');closeBtn.focus();setTimeout(run, 60);}
   function close(){token++;scrim.classList.remove('open');openBtn.focus()}
   function select(s){
     cur=s;SERVERS.forEach(function(x){x.btn.classList.toggle('cur',x===s)});

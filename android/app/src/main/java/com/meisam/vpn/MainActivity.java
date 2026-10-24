@@ -142,6 +142,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void injectBridgePolyfill() {
         String js = "window.isAndroid = true;\n" +
+                "var pingCallbacks = {};\n" +
+                "window.onPingResult = function(callId, ping) {\n" +
+                "  if (pingCallbacks[callId]) {\n" +
+                "    pingCallbacks[callId](ping);\n" +
+                "    delete pingCallbacks[callId];\n" +
+                "  }\n" +
+                "};\n" +
+                "window.measurePingAsync = function(code) {\n" +
+                "  return new Promise(function(resolve) {\n" +
+                "    var callId = 'p_' + Math.random().toString(36).substr(2, 9);\n" +
+                "    pingCallbacks[callId] = function(p) {\n" +
+                "      resolve(p > 0 ? p : null);\n" +
+                "    };\n" +
+                "    window.AndroidBridge.measurePingAsync(code, callId);\n" +
+                "  });\n" +
+                "};\n" +
                 "window.pywebview = {\n" +
                 "  api: {\n" +
                 "    get_initial_state: function() {\n" +
@@ -154,10 +170,7 @@ public class MainActivity extends AppCompatActivity {
                 "      window.AndroidBridge.selectServer(code, country, city);\n" +
                 "    },\n" +
                 "    measure_ping: function(code) {\n" +
-                "      return new Promise(function(resolve) {\n" +
-                "        var p = window.AndroidBridge.measurePing(code);\n" +
-                "        resolve({ ok: p > 0, ping: p > 0 ? p : null });\n" +
-                "      });\n" +
+                "      return window.measurePingAsync(code);\n" +
                 "    },\n" +
                 "    toggle_widget: function(enabled) {\n" +
                 "      window.AndroidBridge.toggleWidget(enabled);\n" +
@@ -256,6 +269,18 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public int measurePing(String code) {
             return api.testServerPing(code);
+        }
+
+        @JavascriptInterface
+        public void measurePingAsync(final String code, final String callId) {
+            threadPool.execute(() -> {
+                int latency = api.testServerPing(code);
+                runOnUiThread(() -> {
+                    if (webView != null) {
+                        webView.evaluateJavascript("if(window.onPingResult) window.onPingResult('" + callId + "', " + latency + ");", null);
+                    }
+                });
+            });
         }
 
         @JavascriptInterface
