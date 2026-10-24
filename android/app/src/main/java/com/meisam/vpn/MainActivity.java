@@ -100,11 +100,9 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl("file:///android_asset/www/index.html");
 
         IntentFilter filter = new IntentFilter(MeisamVpnService.ACTION_STATUS_CHANGED);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(vpnReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(vpnReceiver, filter);
-        }
+        androidx.core.content.ContextCompat.registerReceiver(
+                this, vpnReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+        );
 
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override

@@ -20,17 +20,17 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle 8.5
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.5'
+      - name: Install Official Gradle 8.5
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
+          unzip -q gradle-8.5-bin.zip -d /opt
+          echo "/opt/gradle-8.5/bin" >> $GITHUB_PATH
 
       - name: Build Android Debug APK
         run: |
+          gradle --version
           cd android
-          gradle wrapper --gradle-version 8.5
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace --no-daemon
+          gradle assembleDebug --stacktrace --no-daemon
 
       - name: Prepare APK Output
         run: |
