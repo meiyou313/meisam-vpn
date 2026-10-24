@@ -26,11 +26,23 @@ jobs:
           unzip -q gradle-8.5-bin.zip -d /opt
           echo "/opt/gradle-8.5/bin" >> $GITHUB_PATH
 
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
       - name: Build Android Debug APK
         run: |
           gradle --version
           cd android
-          gradle assembleDebug --stacktrace --no-daemon
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          gradle assembleDebug --stacktrace --no-daemon 2>&1 | tee ../build_log.txt
+
+      - name: Upload Build Failure Log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-log
+          path: build_log.txt
 
       - name: Prepare APK Output
         run: |
