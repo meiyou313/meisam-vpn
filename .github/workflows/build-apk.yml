@@ -35,7 +35,24 @@ jobs:
           gradle --version
           cd android
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleDebug --stacktrace --no-daemon
+          if gradle assembleDebug --stacktrace --no-daemon > build_log.txt 2>&1; then
+            echo "Build successful!"
+          else
+            echo "BUILD FAILED - Capturing log"
+            echo "### Gradle Build Output" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -n 150 build_log.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat build_log.txt
+            exit 1
+          fi
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: android/build_log.txt
 
       - name: Prepare APK Output
         run: |
