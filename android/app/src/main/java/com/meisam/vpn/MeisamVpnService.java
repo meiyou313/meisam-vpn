@@ -234,8 +234,10 @@ public class MeisamVpnService extends VpnService {
                 clientOut.flush();
 
                 // Bi-directional pipe
-                threadPool.execute(() -> pipe(clientIn, sslSocket.getOutputStream(), true));
-                pipe(sslSocket.getInputStream(), clientOut, false);
+                OutputStream sslOut = sslSocket.getOutputStream();
+                InputStream sslIn = sslSocket.getInputStream();
+                threadPool.execute(() -> pipe(clientIn, sslOut, true));
+                pipe(sslIn, clientOut, false);
             }
 
             client.close();

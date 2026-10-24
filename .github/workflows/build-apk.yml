@@ -9,8 +9,6 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout Code
@@ -37,21 +35,7 @@ jobs:
           gradle --version
           cd android
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          gradle assembleDebug --stacktrace --no-daemon > build_log.txt 2>&1 || true
-          cat build_log.txt
-          test -f app/build/outputs/apk/debug/*.apk
-
-      - name: Push Build Log to Repo
-        if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -f android/build_log.txt ]; then
-            cp android/build_log.txt ./LAST_BUILD_LOG.txt
-            git add LAST_BUILD_LOG.txt
-            git commit -m "chore: save build log [skip ci]" || true
-            git push origin main || true
-          fi
+          gradle assembleDebug --stacktrace --no-daemon
 
       - name: Prepare APK Output
         run: |
